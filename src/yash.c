@@ -9,16 +9,36 @@
 
 int main() {
     while (1) {
-        char **command = get_command();  // Retrieve the array of tokens
-        if (command == NULL) {
-            continue;
+        char ***commands = get_commands();
+        if (commands == NULL) {
+            break;
         }
-        int i = 0;
-        while (command[i] != NULL) {
-            printf("arg %d: %s\n", i, command[i]);
-            i++;
+
+        // Handle the commands
+        if (commands[1] != NULL) {
+            printf("Piped command detected!\n");
+            printf("Command 1:\n");
+            for (int i = 0; commands[0][i] != NULL; i++) {
+                printf("  %s\n", commands[0][i]);
+            }
+
+            printf("Command 2:\n");
+            for (int i = 0; commands[1][i] != NULL; i++) {
+                printf("  %s\n", commands[1][i]);
+            }
+
+            // Run the piped commands (implement piping logic here)
+        } else {
+            printf("Single command:\n");
+            for (int i = 0; commands[0][i] != NULL; i++) {
+                printf("  %s\n", commands[0][i]);
+            }
+
+            // Run the single command (implement execution logic here)
         }
-        free(command);
+
+        free(commands);
     }
+
     return 0;
 }
