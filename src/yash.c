@@ -6,6 +6,7 @@
 #include <readline/history.h>
 
 #include "parse.h"
+#include "run.h"
 
 int main() {
     while (1) {
@@ -33,8 +34,7 @@ int main() {
             for (int i = 0; commands[0][i] != NULL; i++) {
                 printf("  %s\n", commands[0][i]);
             }
-
-            // Run the single command (implement execution logic here)
+            execute_command(commands[0]);
         }
 
         free(commands);

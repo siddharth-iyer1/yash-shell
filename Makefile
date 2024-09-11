@@ -6,7 +6,7 @@ SRC_DIR = src
 BIN_DIR = bin
 INCLUDE_DIR = include
 
-SRCS = $(SRC_DIR)/yash.c $(SRC_DIR)/parse.c
+SRCS = $(SRC_DIR)/yash.c $(SRC_DIR)/parse.c $(SRC_DIR)/run.c
 OBJS = $(SRCS:.c=.o)
 
 TARGET = $(BIN_DIR)/yash
