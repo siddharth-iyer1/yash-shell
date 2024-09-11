@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <readline/readline.h>
 #include <readline/history.h>
-
 #include "parse.h"
 #include "run.h"
 
@@ -14,8 +13,8 @@ int main() {
         if (commands == NULL) {
             break;
         }
-
         // Handle the commands
+
         if (commands[1] != NULL) {
             printf("Piped command detected!\n");
             printf("Command 1:\n");
