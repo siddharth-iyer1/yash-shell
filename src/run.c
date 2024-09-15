@@ -6,6 +6,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <signal.h>
+#include <fcntl.h>
 
 #define MAX_JOBS 20
 
@@ -111,18 +112,20 @@ void check_background_jobs() {
 
 void execute_command(char **args) {
     int i = 0;
+    int in_fd = -1, out_fd = -1, err_fd = -1;
+    int background = 0;
+
+    // background
     while (args[i] != NULL) {
+        if (strcmp(args[i], "&") == 0) {
+            background = 1;
+            args[i] = NULL;
+            break;
+        }
         i++;
     }
 
-    int background = 0;
-
-    // if to be sent to background
-    if (i > 0 && strcmp(args[i-1], "&") == 0) {
-        background = 1;
-        args[i-1] = NULL;
-    }
-
+    // must happen in parent for blocking
     if (strcmp(args[0], "fg") == 0) {
         fg_command();
         return;
@@ -134,28 +137,66 @@ void execute_command(char **args) {
         return;
     }
 
+    for (i = 0; args[i] != NULL; i++) {
+        if (strcmp(args[i], "<") == 0) {
+            in_fd = open(args[i + 1], O_RDONLY);
+            if (in_fd < 0) {
+                perror("Failed to open input file");
+                return;
+            }
+            args[i] = NULL;
+        } else if (strcmp(args[i], ">") == 0) {
+            out_fd = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (out_fd < 0) {
+                perror("Failed to open output file");
+                return;
+            }
+            args[i] = NULL;
+        } else if (strcmp(args[i], "2>") == 0) {
+            err_fd = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (err_fd < 0) {
+                perror("Failed to open error file");
+                return;
+            }
+            args[i] = NULL;
+        }
+    }
+
     pid_t pid = fork();
 
     if (pid < 0) {
         perror("Fork failed");
         return;
 
-    } else if (pid == 0) {  // child
+    } else if (pid == 0) {  // child process
+        if (in_fd >= 0) {
+            dup2(in_fd, STDIN_FILENO);
+            close(in_fd);
+        }
+        if (out_fd >= 0) {
+            dup2(out_fd, STDOUT_FILENO);
+            close(out_fd);
+        }
+        if (err_fd >= 0) {
+            dup2(err_fd, STDERR_FILENO);
+            close(err_fd);
+        }
+
         if (execvp(args[0], args) < 0) {
             perror("Execution failed");
             exit(1);
         }
         exit(0);
 
-    } else {  // parent
+    } else {  // parent process
         if (background) {
             printf("Running command in the background, PID: %d\n", pid);
             add_job(pid, args[0], RUNNING, 0);
         } else {
             int status;
-            waitpid(pid, &status, 0);
+            waitpid(pid, &status, 0);   // foreground block
         }
 
-        check_background_jobs();
+        check_background_jobs();  // clears jobs
     }
 }
