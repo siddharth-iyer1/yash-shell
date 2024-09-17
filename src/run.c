@@ -235,7 +235,6 @@ void execute_command(char **args) {
         exit(0);
 
     } else {  // parent process
-        // Set the child's process group
         setpgid(pid, pid);
 
         if (!background) {
