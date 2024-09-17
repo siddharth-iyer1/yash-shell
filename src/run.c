@@ -92,7 +92,7 @@ void fg_command() {
         if (job_list[i].status == STOPPED || (job_list[i].status == RUNNING && !job_list[i].is_foreground)) {
             job_list[i].status = RUNNING;
             job_list[i].is_foreground = 1;
-            printf("%s", job_list[i].command);
+            printf("%s\n", job_list[i].command);
 
             tcsetpgrp(STDIN_FILENO, job_list[i].pid);
             kill(-job_list[i].pid, SIGCONT);
