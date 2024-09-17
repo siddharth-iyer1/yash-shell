@@ -163,6 +163,36 @@ char* concatenate_pipeline_commands(char *left_command, char *right_command) {
     return pipeline_command;
 }
 
+void handle_file_redirections(char **args, int *in_fd, int *out_fd, int *err_fd) {
+    int i = 0;
+    while (args[i] != NULL) {
+        if (strcmp(args[i], "<") == 0) {
+            *in_fd = open(args[i + 1], O_RDONLY);
+            if (*in_fd < 0) {
+                perror("Failed to open input file");
+                return;
+            }
+            // we can just nullify the args here, as execvp won't read past the first null
+            args[i] = NULL;
+        } else if (strcmp(args[i], ">") == 0) {
+            *out_fd = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (*out_fd < 0) {
+                perror("Failed to open output file");
+                return;
+            }
+            args[i] = NULL;
+        } else if (strcmp(args[i], "2>") == 0) {
+            *err_fd = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (*err_fd < 0) {
+                perror("Failed to open error file");
+                return;
+            }
+            args[i] = NULL;
+        }
+        i++;
+    }
+}
+
 void execute_command(char **args) {
     // parse the tokenized command for full command string
     char *command_string = concatenate_args(args);
@@ -193,30 +223,7 @@ void execute_command(char **args) {
         return;
     }
 
-    for (i = 0; args[i] != NULL; i++) {
-        if (strcmp(args[i], "<") == 0) {
-            in_fd = open(args[i + 1], O_RDONLY);
-            if (in_fd < 0) {
-                perror("Failed to open input file");
-                return;
-            }
-            args[i] = NULL;
-        } else if (strcmp(args[i], ">") == 0) {
-            out_fd = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            if (out_fd < 0) {
-                perror("Failed to open output file");
-                return;
-            }
-            args[i] = NULL;
-        } else if (strcmp(args[i], "2>") == 0) {
-            err_fd = open(args[i + 1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
-            if (err_fd < 0) {
-                perror("Failed to open error file");
-                return;
-            }
-            args[i] = NULL;
-        }
-    }
+    handle_file_redirections(args, &in_fd, &out_fd, &err_fd);
 
     pid_t pid = fork();
 
@@ -246,7 +253,6 @@ void execute_command(char **args) {
             dup2(err_fd, STDERR_FILENO);
             close(err_fd);
         }
-
         if (execvp(args[0], args) < 0) {
             perror("Execution failed");
             exit(1);
