@@ -78,21 +78,6 @@ void bg_command() {
     }
 }
 
-void print_jobs() {
-    check_background_jobs();
-    for (int i = 0; i < job_count; i++) {
-        char sign = '-';
-        if (i == job_count - 1 && job_list[i].is_foreground == 1){
-            sign = '+';
-        }
-
-        printf("[%d] %c %s       %s\n", job_list[i].job_id, sign,
-            job_list[i].status == RUNNING ? "Running" :
-            job_list[i].status == STOPPED ? "Stopped" : "Done",
-            job_list[i].command);
-    }
-}
-
 void check_background_jobs() {
     int status;
     pid_t pid;
@@ -108,6 +93,21 @@ void check_background_jobs() {
                 }
             }
         }
+    }
+}
+
+void print_jobs() {
+    check_background_jobs();
+    for (int i = 0; i < job_count; i++) {
+        char sign = '-';
+        if (i == job_count - 1 && job_list[i].is_foreground == 1){
+            sign = '+';
+        }
+
+        printf("[%d] %c %s       %s\n", job_list[i].job_id, sign,
+            job_list[i].status == RUNNING ? "Running" :
+            job_list[i].status == STOPPED ? "Stopped" : "Done",
+            job_list[i].command);
     }
 }
 
