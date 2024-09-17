@@ -92,7 +92,7 @@ void fg_command() {
         if (job_list[i].status == STOPPED || (job_list[i].status == RUNNING && !job_list[i].is_foreground)) {
             job_list[i].status = RUNNING;
             job_list[i].is_foreground = 1;
-            printf("Bringing job [%d] to foreground: %s\n", job_list[i].job_id, job_list[i].command);
+            printf("%s", job_list[i].command);
 
             tcsetpgrp(STDIN_FILENO, job_list[i].pid);
             kill(-job_list[i].pid, SIGCONT);
@@ -153,6 +153,15 @@ char* concatenate_args(char **args) {
     return command_string;
 }
 
+char* concatenate_pipeline_commands(char *left_command, char *right_command) {
+    int total_length = strlen(left_command) + strlen(right_command) + 4;
+    char *pipeline_command = malloc(total_length);
+    if (pipeline_command == NULL) {
+        perror("malloc failed");
+        exit(1);
+    }
+    return pipeline_command;
+}
 
 void execute_command(char **args) {
     // parse the tokenized command for full command string
