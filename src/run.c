@@ -125,30 +125,40 @@ void bg_command() {
     }
 }
 
-void execute_command(char **args) {
-    // parse the tokenized command for full command string
+char* concatenate_args(char **args) {
+    if (args == NULL) return NULL;
+
+    int total_length = 0;
     int i = 0;
 
-    char *command_string = NULL;
-    int total_length = 0;
-
-    for (i = 0; args[i] != NULL; i++) {
+    while (args[i] != NULL) {
         total_length += strlen(args[i]) + 1;
+        i++;
     }
 
-    if (total_length > 0) {
-        command_string = malloc(total_length);
-        command_string[0] = '\0';
+    char *command_string = malloc(total_length);
+    if (command_string == NULL) {
+        perror("malloc failed");
+        exit(1);
+    }
+    command_string[0] = '\0';
 
-        for (i = 0; args[i] != NULL; i++) {
-            strcat(command_string, args[i]);
-            if (args[i + 1] != NULL) {
-                strcat(command_string, " ");
-            }
+    for (i = 0; args[i] != NULL; i++) {
+        strcat(command_string, args[i]);
+        if (args[i + 1] != NULL) {
+            strcat(command_string, " ");
         }
     }
 
-    i = 0;
+    return command_string;
+}
+
+
+void execute_command(char **args) {
+    // parse the tokenized command for full command string
+    char *command_string = concatenate_args(args);
+
+    int i = 0;
     int in_fd = -1, out_fd = -1, err_fd = -1;
     int background = 0;
 
