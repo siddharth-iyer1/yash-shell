@@ -79,6 +79,7 @@ void bg_command() {
 }
 
 void print_jobs() {
+    check_background_jobs();
     for (int i = 0; i < job_count; i++) {
         char sign = '-';
         if (i == job_count - 1 && job_list[i].is_foreground == 1){
