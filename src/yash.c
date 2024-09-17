@@ -9,9 +9,20 @@
 #include "run.h"
 
 int main() {
+    pid_t shell_pgid = getpid();
+    if (setpgid(shell_pgid, shell_pgid) < 0) {
+        exit(1);
+    }
+
+    tcsetpgrp(STDIN_FILENO, shell_pgid);
+
+    signal(SIGINT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGTTOU, SIG_IGN);
+
     while (1) {
         char ***commands = get_commands();
-        if (commands == NULL) {
+        if (!commands) {
             break;
         }
         // Handle the commands
