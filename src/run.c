@@ -22,11 +22,10 @@ typedef struct {
 
 job job_list[MAX_JOBS];
 int job_count = 0;
-int next_job_id = 1;
 
 void add_job(pid_t pid, char *command, job_status status, int is_foreground) {
     if (job_count < MAX_JOBS) {
-        job_list[job_count].job_id = next_job_id++;
+        job_list[job_count].job_id = job_count;
         job_list[job_count].pid = pid;
         job_list[job_count].command = strdup(command);
         job_list[job_count].status = status;
@@ -50,58 +49,12 @@ void remove_job(pid_t pid) {
     }
 }
 
-void fg_command() {
-    // Find the most recently stopped or running background job
-    for (int i = job_count - 1; i >= 0; i--) {
-        if (job_list[i].status == STOPPED || (job_list[i].status == RUNNING && !job_list[i].is_foreground)) {
-            job_list[i].status = RUNNING;
-            job_list[i].is_foreground = 1;
-            printf("Bringing job [%d] to foreground: %s\n", job_list[i].job_id, job_list[i].command);
-
-            // Set the job's process group as the foreground process group
-            if (tcsetpgrp(STDIN_FILENO, job_list[i].pid) == -1) {
-                perror("tcsetpgrp");
-            }
-
-            // Send SIGCONT to the process group
-            if (kill(-job_list[i].pid, SIGCONT) < 0) {
-                perror("kill (SIGCONT)");
-            }
-
-            // Wait for the job to finish or stop
-            int status;
-            if (waitpid(-job_list[i].pid, &status, WUNTRACED) == -1) {
-                perror("waitpid");
-            }
-
-            // Restore terminal control to the shell
-            if (tcsetpgrp(STDIN_FILENO, getpid()) == -1) {
-                perror("tcsetpgrp");
-            }
-
-            if (WIFSTOPPED(status)) {
-                job_list[i].status = STOPPED;
-                printf("\nJob [%d] stopped by signal %d\n", job_list[i].job_id, WSTOPSIG(status));
-            } else {
-                // Job has finished
-                remove_job(job_list[i].pid);
-            }
-            break;
-        }
-    }
-}
-
-
-void bg_command() {
-    for (int i = job_count - 1; i >= 0; i--) {
-        if (job_list[i].status == STOPPED) {
-            job_list[i].status = RUNNING;
-            job_list[i].is_foreground = 0;
-            printf("Bringing job [%d] to background: %s\n", job_list[i].job_id, job_list[i].command);
-            kill(job_list[i].pid, SIGCONT);
-            break;
-        }
-    }
+void print_job(int job_index, char sign) {
+    printf("[%d] %c %s       %s\n", job_list[job_index].job_id, sign,
+        job_list[job_index].status == RUNNING ? "Running" :
+        job_list[job_index].status == STOPPED ? "Stopped" : "Done",
+        job_list[job_index].command
+        );
 }
 
 void check_background_jobs() {
@@ -114,7 +67,8 @@ void check_background_jobs() {
             if (pid == job_list[i].pid) {
                 if (WIFEXITED(status) || WIFSIGNALED(status)) {
                     job_list[i].status = DONE;
-                    printf("Job [%d] (%s) finished!\n", job_list[i].job_id, job_list[i].command);
+                    // printf("Job [%d] (%s) finished!\n", job_list[i].job_id, job_list[i].command);
+                    print_job(i, '-');
                     remove_job(pid);
                 }
             }
@@ -129,16 +83,72 @@ void print_jobs() {
         if (i == job_count - 1 && job_list[i].is_foreground == 1){
             sign = '+';
         }
+        print_job(i, sign);
+    }
+}
 
-        printf("[%d] %c %s       %s\n", job_list[i].job_id, sign,
-            job_list[i].status == RUNNING ? "Running" :
-            job_list[i].status == STOPPED ? "Stopped" : "Done",
-            job_list[i].command);
+void fg_command() {
+    for (int i = job_count - 1; i >= 0; i--) {
+        if (job_list[i].status == STOPPED || (job_list[i].status == RUNNING && !job_list[i].is_foreground)) {
+            job_list[i].status = RUNNING;
+            job_list[i].is_foreground = 1;
+            printf("Bringing job [%d] to foreground: %s\n", job_list[i].job_id, job_list[i].command);
+
+            tcsetpgrp(STDIN_FILENO, job_list[i].pid);
+            kill(-job_list[i].pid, SIGCONT);
+            int status;
+            waitpid(-job_list[i].pid, &status, WUNTRACED);
+
+            // restore to shell after wait
+            tcsetpgrp(STDIN_FILENO, getpid());
+
+            if (WIFSTOPPED(status)) {
+                job_list[i].status = STOPPED;
+            } else {
+                remove_job(job_list[i].pid);
+            }
+            break;
+        }
+    }
+}
+
+
+void bg_command() {
+    for (int i = job_count - 1; i >= 0; i--) {
+        if (job_list[i].status == STOPPED) {
+            job_list[i].status = RUNNING;
+            job_list[i].is_foreground = 0;
+            print_job(i, '-');
+            kill(job_list[i].pid, SIGCONT);
+            break;
+        }
     }
 }
 
 void execute_command(char **args) {
+    // parse the tokenized command for full command string
     int i = 0;
+
+    char *command_string = NULL;
+    int total_length = 0;
+
+    for (i = 0; args[i] != NULL; i++) {
+        total_length += strlen(args[i]) + 1;
+    }
+
+    if (total_length > 0) {
+        command_string = malloc(total_length);
+        command_string[0] = '\0';
+
+        for (i = 0; args[i] != NULL; i++) {
+            strcat(command_string, args[i]);
+            if (args[i + 1] != NULL) {
+                strcat(command_string, " ");
+            }
+        }
+    }
+
+    i = 0;
     int in_fd = -1, out_fd = -1, err_fd = -1;
     int background = 0;
 
@@ -198,8 +208,6 @@ void execute_command(char **args) {
     } else if (pid == 0) {  // child process
         setpgid(0, 0);
 
-        printf("line 175 child pid? %d\n", getpid());
-
         if (!background) {
             tcsetpgrp(STDIN_FILENO, getpid());
         }
@@ -230,31 +238,25 @@ void execute_command(char **args) {
         // Set the child's process group
         setpgid(pid, pid);
 
-        printf("line 205 child pid? %d", pid);
-
         if (!background) {
-            // Set the child as the foreground process group
+            // foreground
             tcsetpgrp(STDIN_FILENO, pid);
 
-            // Wait for the foreground job to finish or stop
             int status;
             waitpid(pid, &status, WUNTRACED);
 
-            // Restore the shell as the foreground process group
+            // restore terminal control to shell
             tcsetpgrp(STDIN_FILENO, getpid());
 
             if (WIFSTOPPED(status)) {
-                // Child was stopped (Ctrl-Z)
-                printf("\nJob [%d] stopped by signal %d\n", next_job_id, WSTOPSIG(status));
-                add_job(pid, args[0], STOPPED, 1);
+                // ^z
+                add_job(pid, command_string, STOPPED, 1);
             } else {
-                // Child terminated
                 remove_job(pid);
             }
         } else {
-            // Background job
-            printf("Running command in the background, PID: %d\n", pid);
-            add_job(pid, args[0], RUNNING, 0);
+
+            add_job(pid, command_string, RUNNING, 0);
         }
 
         check_background_jobs();

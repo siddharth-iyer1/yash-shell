@@ -41,10 +41,6 @@ int main() {
 
             // Run the piped commands (implement piping logic here)
         } else {
-            printf("Single command:\n");
-            for (int i = 0; commands[0][i] != NULL; i++) {
-                printf("  %s\n", commands[0][i]);
-            }
             execute_command(commands[0]);
         }
 

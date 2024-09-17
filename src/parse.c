@@ -28,7 +28,7 @@ char*** get_commands() {
         return NULL;
     }
 
-    // Check if the command contains a pipe
+    // check if the command contains a pipe
     char *pipe_position = strchr(input, '|');
     char ***commands = malloc(2 * sizeof(char**));
 
