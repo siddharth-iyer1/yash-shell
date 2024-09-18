@@ -25,21 +25,8 @@ int main() {
         if (!commands) {
             break;
         }
-        // Handle the commands
-
         if (commands[1] != NULL) {
-            printf("Piped command detected!\n");
-            printf("Command 1:\n");
-            for (int i = 0; commands[0][i] != NULL; i++) {
-                printf("  %s\n", commands[0][i]);
-            }
-
-            printf("Command 2:\n");
-            for (int i = 0; commands[1][i] != NULL; i++) {
-                printf("  %s\n", commands[1][i]);
-            }
-
-            // Run the piped commands (implement piping logic here)
+            execute_piped_command(commands[0], commands[1]);
         } else {
             execute_command(commands[0]);
         }

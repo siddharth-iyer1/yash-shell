@@ -1,7 +1,0 @@
-Makefile
-bin
-include
-out.txt
-src
-test.txt
-test2.txt
